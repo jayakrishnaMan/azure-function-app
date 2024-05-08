@@ -5,7 +5,7 @@ import requests
 
 # Sentences are encoded by calling model.encode()
 model_id = "sentence-transformers/all-MiniLM-L6-v2"
-hf_token = "" #"get your token in http://hf.co/settings/tokens"
+hf_token = "s" #"get your token in http://hf.co/settings/tokens"
 
 
 api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_id}"
@@ -21,11 +21,13 @@ def get_custom_embedding(req: func.HttpRequest) -> func.HttpResponse:
     try:
         req_body = req.get_json()
         values = req_body['values']
+        output = []
         # from sentence_transformers import SentenceTransformer
         # model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
         for i in range(0,len(values)):
             value=values[i]
-            input_text=value['data']['question']
+            input_text_question=value['data']['question']
+            input_text_answer=value['data']['question']
                 #             {
                 #     "values": [
                 #         {
@@ -38,10 +40,22 @@ def get_custom_embedding(req: func.HttpRequest) -> func.HttpResponse:
                 # }
 
             try:
-                response = requests.post(api_url, headers=headers, json={"inputs": input_text, "options":{"wait_for_model":True}})
+
+                response = requests.post(api_url, headers=headers, json={"inputs": input_text_question, "options":{"wait_for_model":True}})
                 embedding_output=response.json()
                 # embedding = model.encode(input_text) #for cys
-                values[i]['data']['question_vector']=embedding_output
+                questionvector=embedding_output
+                response = requests.post(api_url, headers=headers, json={"inputs": input_text_answer, "options":{"wait_for_model":True}})
+                embedding_output=response.json()
+                # embedding = model.encode(input_text) #for cys
+                answervector=embedding_output
+                output.append({
+                    'recordID':values[i]['recordId'],
+                    "data":{ "answerVector":answervector,
+                            
+                                "questionVector":questionvector
+                    }
+                })
             #                 {
             #     "values": [
             #         {
@@ -62,16 +76,24 @@ def get_custom_embedding(req: func.HttpRequest) -> func.HttpResponse:
             except Exception as e:
                 print("Eddddd",e)
                 values[i]['data']['errors']="There is a error during processing"
-
-            del values[i]['data']['question']
-
+                output.append({
+                                    'recordID':values[i]['recordId'],
+                                      "errors": [{"message":"error is"+e}],
+                                })
+            # del values[i]['data']['question']
+            # del values[i]['data']['question']
+            z={"values":output}
+            print("Eddddd",z)
+            logging.info(f'RUD: {z}')
             return func.HttpResponse(
-                json.dumps(values),
+                json.dumps({"values":output}),
+                mimetype="application/json",
                 status_code=200
             )
     except Exception as e:
         print("error is ",e)
         return func.HttpResponse(
-                json.dumps(values),
+                json.dumps({"values":output}),
+                mimetype="application/json",
                 status_code=401
             )
