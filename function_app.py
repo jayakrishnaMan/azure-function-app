@@ -5,7 +5,7 @@ import requests
 
 # Sentences are encoded by calling model.encode()
 model_id = "sentence-transformers/all-MiniLM-L6-v2"
-hf_token = "s" #"get your token in http://hf.co/settings/tokens"
+hf_token = "" #"get your token in http://hf.co/settings/tokens"
 
 
 api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_id}"
